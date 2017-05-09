@@ -742,6 +742,49 @@ towards the performance. But we plan to use the SIMD mode of OpenMP 4
 to increase the performances.
 
 
+\subsection{Performance profiling of triSYCL}
+\label{sec:profiling}
+As we have seen with the performance comparison on the knn example,
+further improvement can be made to triSYCL to get better performance
+both with the OpenCL interoperability mode and with OpenMP parallelism.
+
+In the knn example, we execute a great number of small kernels
+(one kernel for each image in the reference set, 500 kernels in total,
+with each execution of a kernel taking less than 1ms),
+this has highlighted a performance inefficiency in triSYCL.
+
+The current way to add a task in the asynchronous task graph in triSYCL,
+is for the main thread to create a new thread for each task,
+and then detach it. The new thread will launch the kernel and synchronize by
+its own means, so there is no need for the main thread to monitor
+its execution. The problem comes when, just like in our example,
+the number of tasks is great and the execution time of each task is small.
+We can come across situations when we spend more time creating threads
+than actually executing them.
+
+We ran the example with Intel's OpenCL implementation on CPU that uses TBB
+as a backed. With Intel VTune can we profile the execution and we observe
+that Intel's OpenCL runtime creates 7 TBB worker threads that will execute
+the kernels, meanwhile the main triSYCL thread will, for each kernel execution,
+create a thread that will launch the computation of the kernel on the
+TBB worker threads. We end up creating more than 500 threads during the
+execution of the example with most of these threads delegating the computation
+to the TBB workers and doing very little work themselves.
+
+This issue is highlighted even more when using OpenMP. Instead of just using
+a pool of existing threads to make the computation, OpenMP creates 8 threads
+to execute the workgroups for every execution of a kernel. Again, similarly to
+the OpenCL case we create many threads that have a very short lifespan,
+for the execution of 500 kernels, 4000 threads are created.
+
+The solution to this problem is straight forward, there need to be a way to
+reuse threads instead of creating them when possible. This can be achieved
+by using a thread pool or a similar mechanism that allows us to assign a task
+to an existing thread and monitor the tasks with futures and promises.
+Doing that will greatly decrease the amount of time spent creating and
+synchronizing the threads between them.
+
+
 \subsection{Binary Neural Network for image classification on FPGA}
 \label{sec:example-from-ken}
 
