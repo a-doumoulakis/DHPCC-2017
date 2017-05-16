@@ -25,6 +25,30 @@
 %\setcopyright{cagov}
 %\setcopyright{cagovmixed}
 
+% pgfplot settings
+\pgfplotsset{compat=newest}
+
+\pgfplotsset{
+    % #1: index in the group(0,1,2,...)
+    % #2: number of plots of that group
+    bar group size/.style 2 args={
+        /pgf/bar shift={%
+                % total width = n*w + (n-1)*skip
+                % -> subtract half for centering
+                -0.5*(#2*\pgfplotbarwidth +
+                (#2-1)* \pgfkeysvalueof{/pgfplots/bar group skip})  +
+                % the '0.5*w' is for centering
+                (.5+#1)*\pgfplotbarwidth +
+                #1*\pgfkeysvalueof{/pgfplots/bar group skip}},%
+    },
+    bar group skip/.initial=2pt,
+    plot 0/.style={black,fill=blue!90!white,mark=none},%
+    plot 1/.style={black,fill=blue!30!white,mark=none},%
+    plot 2/.style={black,fill=green!90!white,mark=none},%
+    plot 3/.style={black,fill=green!30!white,mark=none},%
+    plot 4/.style={black,fill=purple!90!white,mark=none},%
+    plot 5/.style={black,fill=red!90!white,mark=none},%
+}
 
 % DOI
 %\acmDOI{10.475/123_4}
@@ -654,43 +678,75 @@ image against all the reference images.
 \begin{figure}
   \begin{tikzpicture}
     \begin{axis}[
-      ybar,
-      axis on top,
-      ymax=8, ymin=0,
-      height=6cm,
-      width=\hsize,
-      enlarge x limits=0.13,
-      ymajorgrids,
-      tick align=inside,
-      major grid style={draw=none},
-      bar shift=0pt,
-      axis x line*=left,
-      ylabel={ms},
-      xtick={triSYCL OMP, triSYCL OCL, ComputeCpp, OpenCL},
-      x tick label style={font=\small,align=center},
-      legend cell align=left,
-      max space between ticks=20pt,
-      legend style={ at={(0.35,1.0)}, column sep=1ex },
-      y label style={ at={(axis description cs:0.1,0.4)}, anchor=west},
-      symbolic x coords={triSYCL OMP, triSYCL OCL, ComputeCpp, OpenCL},
-      nodes near coords=\rotatebox{0}{\scriptsize\pgfmathprintnumber\pgfplotspointmeta},
-      ]
-      \addplot[draw=none,fill=blue!40!white] coordinates {(triSYCL OMP, 6.7)};
-      \addplot[draw=none,fill=blue!40!white] coordinates {(triSYCL OCL, 1.0)};
-      \addplot[draw=none,fill=green!40!white] coordinates {(ComputeCpp, 1.0)};
-      \addplot[draw=none,fill=red!40!white] coordinates {(OpenCL, 0.6)};
+        ybar,
+        axis on top,
+        ymax=1.2, ymin=0,
+        height=6cm,
+        width=\hsize,
+        enlarge x limits=0.12,
+        ymajorgrids,
+        tick align=outside,
+        major grid style={draw=none},
+        axis x line*=left,
+        ylabel={ms},
+        xtick={triSYCL OMP,triSYCL OCL,ComputeCPP,OpenCL},
+        max space between ticks=30pt,
+        x tick label style={/pgf/number format/1000 sep=},
+        legend style={at={(0.5,-0.15)},
+        anchor=north,legend columns=-1},
+        bar width=6pt,
+        symbolic x coords={triSYCL OMP,triSYCL OCL,ComputeCPP,OpenCL},
+        nodes near coords=\rotatebox{90}{\scriptsize\pgfmathprintnumber
+          \pgfplotspointmeta}
+        ]
+        \addplot[plot 0,bar group size={0}{4}]
+        coordinates {(triSYCL OMP,0.99)};
+        \addplot[plot 0,bar group size={1}{4}]
+        coordinates {(triSYCL OMP,0.75)};
+        \addplot[plot 1,bar group size={2}{4}]
+        coordinates {(triSYCL OMP,0.75)};
+        \addplot[plot 1,bar group size={3}{4}]
+        coordinates {(triSYCL OMP,0.43)};
 
-      %\legend{triSYCL redundant, triSYCL, Plain OpenCL API}
+        \addplot[plot 2,bar group size={0}{4}]
+        coordinates {(triSYCL OCL,0.48)};
+        \addplot[plot 2,bar group size={1}{4}]
+        coordinates {(triSYCL OCL,0.44)};
+        \addplot[plot 3,bar group size={2}{4}]
+        coordinates {(triSYCL OCL,0.47)};
+        \addplot[plot 3,bar group size={3}{4}]
+        coordinates {(triSYCL OCL,0.44)};
+
+        \addplot[plot 4,bar group size={0}{1}]
+        coordinates {(ComputeCPP,0.77)};
+
+        \addplot[plot 5,bar group size={0}{1}]
+        coordinates {(OpenCL,0.42)};
+
     \end{axis}
   \end{tikzpicture}
   \caption{Average total execution time for digit recognition
-    application per image running OpenCL and SYCL kernels with different host API on a CPU.}
+    application per image running OpenCL and SYCL kernels with different host
+    API and configurations on a CPU.}
   \label{fig:results-digit-recognition}
 \end{figure}
 
 The examples are run on a CPU because it was the only common target of
 all the tested tools. The performance observed is show in figure
 Figure~\ref{fig:results-digit-recognition}.
+
+The details of Figure~\ref{fig:results-digit-recognition} are as follows,
+the first two groups of bar graphs represent the observed execution times
+with triSYCL using OpenMP for parallelism and triSYCL in OpenCL interoperability
+mode. The first two darker bars for each triSYCL mode represent the execution
+time when compiled with GCC while the last two represent the execution time when
+compiled with clang. The difference between the bars of the same color is that 
+the left bar represent the execution time with asyncronous kernel execution 
+enabled while it is disabled in the time shown with the second bar (see 
+Section~\ref{sec:profiling} for details).
+Finaly the last two purpe and red bars represent the execution time observed 
+with ComputeCPP and with a 'pure' OpenCL implementation.
+
 
 The version written in pure single-source SYCL C++ was run with
 triSYCL based on OpenMP and with the free community edition of
@@ -760,7 +816,10 @@ its own means, so there is no need for the main thread to monitor
 its execution. The problem comes when, just like in our example,
 the number of tasks is great and the execution time of each task is small.
 We can come across situations when we spend more time creating threads
-than actually executing them.
+than actually executing them. When executing the kernels with asynchronous 
+kernels disabled, the number of threads created decreases dramatically, 
+hence the performance improvement observed 
+in Figure~\ref{fig:digit-SYCL-OpenCL-code}. 
 
 We ran the example with Intel's OpenCL implementation on CPU that uses TBB
 as a backed. With Intel VTune can we profile the execution and we observe
@@ -776,6 +835,11 @@ a pool of existing threads to make the computation, OpenMP creates 8 threads
 to execute the workgroups for every execution of a kernel. Again, similarly to
 the OpenCL case we create many threads that have a very short lifespan,
 for the execution of 500 kernels, 4000 threads are created.
+
+Furthermore, GCC and Clang do not use the same OpenMP library (libgomp for GCC 
+and libomp for Clang), Clang reuses existing threads instead of creating new 
+ones, this brings the time spent creating threads down and thus an increase
+in performance.
 
 The solution to this problem is straight forward, there need to be a way to
 reuse threads instead of creating them when possible. This can be achieved
